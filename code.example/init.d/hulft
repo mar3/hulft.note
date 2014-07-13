@@ -1,0 +1,154 @@
+#!/bin/bash
+
+#
+# HULFT
+#
+# description: run HULFT daemon.
+# chkconfig: - 99 1
+# processname: hulft
+#
+
+
+
+
+###############################################################################
+###############################################################################
+###############################################################################
+# settings
+
+# Source function library.
+. /etc/init.d/functions
+
+#
+# HULFT variables
+#
+export HULEXEP=/usr/local/HULFT/bin
+export HULPATH=/usr/local/HULFT/etc
+
+prog=hulft
+
+lockfile=/var/lock/subsys/$prog
+
+
+
+
+
+
+###############################################################################
+###############################################################################
+###############################################################################
+# handlers
+
+start() {
+
+	#
+	# sndd
+	#
+	KIND="HULFT_SNDD"
+	echo -n $"Starting $KIND services: "
+	daemon /usr/local/HULFT/bin/hulsndd
+	RETVAL=$?
+	echo
+
+	#
+	# rcvd
+	#
+	KIND="HULFT_RCVD"
+	echo -n $"Starting $KIND services: "
+	daemon /usr/local/HULFT/bin/hulrcvd
+	RETVAL2=$?
+	echo
+
+	#
+	# obsd
+	#
+	KIND="HULFT_OBSD"
+	echo -n $"Starting $KIND services: "
+	daemon /usr/local/HULFT/bin/hulobsd
+	RETVAL3=$?
+	echo
+
+	[ $RETVAL -eq 0 -a $RETVAL2 -eq 0 -a $RETVAL3 -eq 0 ] && touch /var/lock/subsys/hulft || \
+		RETVAL=1
+
+	return $RETVAL
+}
+
+stop() {
+
+	#
+	# sndd
+	#
+	KIND="HULFT_SNDD"
+	echo -n $"Shutting down $KIND services: "
+	/usr/local/HULFT/bin/utlkillsnd
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && success || failure
+	echo
+
+	#
+	# rcvd
+	#
+	KIND="HULFT_RCVD"
+	echo -n $"Shutting down $KIND services: "
+	/usr/local/HULFT/bin/utlkillrcv
+	RETVAL2=$?
+	[ $RETVAL2 -eq 0 ] && success || failure
+	echo
+
+	#
+	# obsd
+	#
+	KIND="HULFT_OBSD"
+	echo -n $"Shutting down $KIND services: "
+	/usr/local/HULFT/bin/utlkillobs
+	RETVAL3=$?
+	[ $RETVAL3 -eq 0 ] && success || failure
+	echo
+
+	[ $RETVAL -eq 0 -a $RETVAL2 -eq 0 -a $RETVAL3 -eq 0 ] &&
+		rm -f /var/lock/subsys/hulft
+
+	return $RETVAL
+}
+
+status() {
+	ps -ef | grep -vE 'grep|status' | grep -E 'hulsndd|hulrcvd|hulobsd'
+}
+
+restart() {
+	stop
+	start
+}
+
+
+
+
+
+
+
+###############################################################################
+###############################################################################
+###############################################################################
+# main
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	status)
+		status
+		;;
+	restart)
+		restart
+		;;
+	condrestart)
+		[ -f /var/lock/subsys/hulft ] && restart || :
+		;;
+	*)
+		echo $"Usage: $0 {start|stop|status|restart|condrestart}"
+		exit 1
+esac
